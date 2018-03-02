@@ -1,0 +1,23 @@
+Transfer multisegment de fisiere
+
+Componente:
+  - server concurent
+  - client
+  
+Server:
+Pune la dispozitie un arbore de fisiere si directoare, din care clientii pot 
+cere fisiere.
+
+Client:
+Cere un fisier de la server, si il aduce pe mai multe segmente simultan. 
+In client pot fi specificate si servere alternative de unde se poate aduce
+acelasi fisier. Numarul de segmente si numarul de servere se va alege de
+catre utilizator, prin intermediul unui fisier de configurare sau direct, 
+ca argumente in linia de comanda.
+
+Parametrii pentru un transfer vor fi:
+
+- numele fisierului
+- lista de servere unde s-ar putea afla fisierul; clientul trebuie, in orice caz,
+sa interogheze serverul in legatura cu prezenta fisierului respectiv
+- numarul de segmente
