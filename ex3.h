@@ -11,6 +11,7 @@
 #define EX3_EARLYEOF 7
 #define EX3_FNAMNOTSET 8
 #define EX3_INVCMD 9
+#define EX3_INFILE 10
 
 int readline(int connfd, char*buf,int maxlen);
 
