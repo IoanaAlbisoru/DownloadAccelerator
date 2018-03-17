@@ -7,96 +7,133 @@
 #include<sys/socket.h>
 #include<sys/stat.h>
 #include<netinet/in.h>
+#include<dirent.h>
 #include "netio.h"
 #include "ex3.h"
 
 #define SERVER_PORT 6000
-#define BUFFSIZE 1024
+#define MAXBUF 1024
 #define MAXCMD 500
+#define ROOT "/home/oana/Desktop/proiect" //directorul de start al cautarii
 
-#if MAXCMD > BUFFSIZE
+#if MAXCMD > MAXBUF
 # error "MAXCMD prea mare"
 #endif
 
-char * errorcodes[] = {
-    "00 OK \r\n",
-    "01 Da-i drumul \r\n",
-    "02 La revedere \r\n",
-    "03 Eroare la citire din retea \r\n",
-    "04 Linia este prea lunga \r\n",
-    "05 Nu am putut crea fisierul \r\n",
-    "06 Nu am putut scrie fisierul \r\n",
-    "07 Conexiunea s-a terminat prematur \r\n",
-    "08 Numele fisierului nu e dat \r\n",
-    "09 Comanda necunscuta \r\n"
+int ret;
+
+char *errorcodes[] = {
+    "1 Succes\n",
+    "2 La revedere\n",
+    "3 Eroare la citire\n",
+    "4 Eroare la crearea fisierului\n",
+    "5 Eroare la scriere\n",
+    "6 EOF prematur\n",
+    "7 Linia este prea lunga\n",
+    "8 Comanda necunoscuta\n",
+    "9 Fisier inexistent\n"
 };
 
-static inline void reply(int connfd, int code){
-    (void) write(connfd, errorcodes[code], strlen(errorcodes[code]));
+static inline void reply(int sockfd, int code){
+    (void)write(sockfd, errorcodes[code], strlen(errorcodes[code]));
 }
 
-void getfile(int connfd, char *file_name, char * buf){
-    int fd, nread;
-    
-    if((fd = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 00644)) <0){
-     reply(connfd, EX3_FILECREA);
-     return;
-    }
-    reply(connfd, EX3_GOAHEAD);
-    
-    while((nread = stream_read(connfd, (void *)buf, 1024)) >= 0){
-        if(write(fd, (void *)buf, nread) == -1){
-            reply(connfd, EX3_FILEWRERR);
-            return;
-        }
-    }
-    close(fd);
-    if(nread < 0)
-        reply(connfd, EX3_READERR);
-    else
-        reply(connfd, EX3_SUCCESS);
-    return;
+
+int find_file(char *file_name, char *root){
+	DIR *src;
+	struct dirent *sdir;
+	struct stat st;
+	char filepath[100];
+	
+	if((src = opendir(root)) == NULL){
+		printf("Eroare la deschiderea directorului.\n");
+		exit(1);
+	}
+
+	while((sdir = readdir(src)) != NULL){
+		if(strcmp(sdir->d_name, ".") && strcmp(sdir->d_name, "..")){
+			strcpy(filepath, root);
+			strcat(filepath, "/");
+			strcat(filepath, sdir->d_name);
+			printf("filepath: %s\n", filepath);
+
+			if(lstat(filepath, &st) < 0){
+				printf("Eroare la lstat in server.\n");
+				exit(2);
+			}
+
+			if(S_ISREG(st.st_mode)){
+				printf("e fisier\n");
+				printf("d_name: --%s--\n", sdir->d_name);
+				printf("file_name: --%s--\n", file_name);
+				if(strncmp(sdir->d_name, file_name,strlen(sdir->d_name))==0){
+					ret = 1;
+					
+				}
+			}
+			else if(S_ISDIR(st.st_mode)){
+				find_file(file_name, filepath);
+			}
+		}
+	}
+
+	closedir(src);
+	
+	return ret;
 }
 
 void ex3_proto(int connfd) {
-    int ret, n;
-    char buf[BUFFSIZE];
+    int ret, n, fd, nread;
+    char buf[MAXBUF];
     char *file_name = NULL;
     char *cmd;
     
     do{
-        ret = readline(connfd, buf, MAXCMD);
-        if(ret != EX3_SUCCESS){
-            reply(connfd, ret);
-            return;
-        }
-        
+        printf("Inainte de readline\n");
+        ret = readline(connfd, buf, MAXBUF);
+        //printf("%s\n", buf);
         cmd = buf;
         n = strspn(cmd, " \t\r\n");
+        
         if(strlen(cmd) == n)
             continue;
         cmd += n;
         n = strcspn(cmd, " \t\r\n");
+        //printf("%d %s\n", n, cmd);
         if(strncmp(cmd, "quit", n) == 0){
-            reply(connfd, EX3_BYE);
             return;
         }
-        if(strncmp(cmd, "filename", n) == 0){
+        if(strncmp(cmd, "search", n) == 0){
             cmd += n + 1;
             file_name = (char *)malloc(strlen(cmd) + 1);
             strcpy(file_name, cmd);
-            reply(connfd, EX3_SUCCESS);
-            continue;
-        }
-        if(strncmp(cmd, "data", n) == 0){
+            printf("%s\n", file_name);
             if(!file_name){
-                reply(connfd, EX3_FNAMNOTSET);
                 continue;
             }
-            getfile(connfd, file_name, buf);
+            if(find_file(file_name, ROOT))
+                reply(connfd, EX3_SUCCESS);
+            else
+                reply(connfd, EX3_INFILE);
             return;
         }
-        reply(connfd, EX3_INVCMD);
+        
+        if(strncmp(cmd, "get", n) == 0){
+            if((fd = open(file_name, O_RDONLY)) == -1){
+                printf("Eroare la deschiderea fisierului %s \n", file_name);
+                exit(1);
+            }
+            while((nread = read(fd, (void *)buf, MAXBUF)) > 0){
+                stream_write(connfd, (void *)buf, nread);
+            }
+            if(nread < 0) {
+                printf("Client: Eroare la citire din fisier \n");
+                exit(1);
+            }
+            shutdown(connfd, SHUT_WR);
+            close(fd);
+            exit(0);
+        }
     }while(1);
 }
 
@@ -130,10 +167,11 @@ int main(void){
             printf("Eroare la accept \n");
             exit(1);
         }
+        printf("Sunt in server si urmeaza sa fac fork();\n");
         pid = fork();
         switch(pid){
             case -1: printf("Eroare la fork \n"); exit(1);
-            case 0: close(sockfd); ex3_proto(connfd); exit(0);
+            case 0: ex3_proto(sockfd); exit(0);
             default: close(connfd);
         }
     }
