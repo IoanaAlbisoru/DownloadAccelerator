@@ -14,7 +14,7 @@
 #define SERVER_PORT 6000
 #define MAXBUF 1024
 #define MAXCMD 500
-#define ROOT "/home/oana/Desktop/proiect" //directorul de start al cautarii
+#define ROOT "/home/Documents/PAD" //directorul de start al cautarii
 
 #if MAXCMD > MAXBUF
 # error "MAXCMD prea mare"
@@ -38,6 +38,7 @@ static inline void reply(int sockfd, int code){
     (void)write(sockfd, errorcodes[code], strlen(errorcodes[code]));
 }
 
+long int fileSize = 0;
 
 int find_file(char *file_name, char *root){
 	DIR *src;
@@ -68,7 +69,7 @@ int find_file(char *file_name, char *root){
 				printf("file_name: --%s--\n", file_name);
 				if(strncmp(sdir->d_name, file_name,strlen(sdir->d_name))==0){
 					ret = 1;
-					
+					fileSize = st.st_size;		//dimensiunea fisierului
 				}
 			}
 			else if(S_ISDIR(st.st_mode)){
@@ -82,7 +83,7 @@ int find_file(char *file_name, char *root){
 	return ret;
 }
 
-void ex3_proto(int connfd) {
+void ex3_proto(int connfd) {		//acum returneaza dimensiunea fisierului
     int ret, n, fd, nread;
     char buf[MAXBUF];
     char *file_name = NULL;
@@ -134,6 +135,15 @@ void ex3_proto(int connfd) {
             close(fd);
             exit(0);
         }
+	if(strncmp(cmd, "size", n) == 0){
+	    if(fileSize)
+	    {
+		snprintf(buf, MAXBUF, "%ld", fileSize);
+		stream_write(connfd, (void *)buf, strlen(buf));
+	     }
+	    else
+		reply(connfd, EX3_EARLYEOF);
+	}
     }while(1);
 }
 
@@ -172,7 +182,7 @@ int main(void){
         switch(pid){
             case -1: printf("Eroare la fork \n"); exit(1);
             case 0: ex3_proto(sockfd); exit(0);
-            default: close(connfd);
+            default: close(sockfd);
         }
     }
     exit(0);
