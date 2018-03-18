@@ -23,6 +23,8 @@
 int ret;
 char entire_filename[100];
 int total_size;
+int segSize;
+int offset;
 char *errorcodes[] = {
     "1 Succes\r\n",
     "2 continua\r\n",
@@ -118,7 +120,7 @@ void ex3_proto(int connfd) {
             file_name = (char *)malloc(strlen(cmd) + 1);
             strcpy(file_name, cmd);
             file_name[strlen(file_name)-1]='\0';
-            printf("%s\n", file_name);
+            // printf("%s\n", file_name);
             if(!file_name){
                 continue;
             }
@@ -131,23 +133,39 @@ void ex3_proto(int connfd) {
             continue;
         }
 
-        if(strncmp(cmd, "getSize", n) == 0){
+        if(strncmp(cmd, "size", n) == 0){
+            char a[20];
+            snprintf(a, sizeof(a), "%d", total_size);
+            strcat(a,"\r\n");
+            // printf("a=%s\n",a);
+            write(connfd,a,strlen(a));
+            continue;
+        }
+        //primeste segSize
+        if(strncmp(cmd, "segment", n) == 0){
             cmd += n + 1;
             char a[20];
-            itoa(a,total_size,10);
-            strcat(a,"\r\n");
-                reply(connfd, EX3_INFILE);
+            strcpy(a, cmd);
+            segSize=atoi(a);
+            // printf("segSize=%i\n",segSize);
             continue;
         }
         
         if(strncmp(cmd, "get", n) == 0){
-            printf("Am ajuns in comanda get\n");
-            if((fd = open(entire_filename   , O_RDONLY)) == -1){
-                printf("Eroare la deschiderea fisierului %s \n", file_name);
+            // printf("Am ajuns in comanda get\n");
+            cmd += n + 1;
+            char a[20];
+            strcpy(a, cmd);
+            offset=atoi(a);
+            // printf("offset=%i\n",offset);
+            if((fd = open(entire_filename , O_RDONLY)) == -1){
+                printf("Eroare la deschiderea fisierului %s \n", entire_filename);
                 exit(1);
             }
-            while((nread = read(fd, (void *)buf, MAXBUF)) > 0){
+            lseek(fd,offset,SEEK_SET);
+            while((nread = read(fd, (void *)buf, segSize)) > 0){
                 stream_write(connfd, (void *)buf, nread);
+                segSize-=nread;
             }
             if(nread < 0) {
                 printf("Client: Eroare la citire din fisier \n");

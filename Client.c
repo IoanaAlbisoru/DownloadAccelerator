@@ -13,32 +13,42 @@
 
 #define SERVER_PORT 6000
 #define MAXBUF 1024
-
+#define MAXFILEDIM 100000000
+#define MAXSEG 20
 char *errorcodes[] = {
     "1 Succes\r\n",
-    "2 La revedere\r\n",
-    "3 Eroare la citire\r\n",
-    "4 Eroare la crearea fisierului\r\n",
-    "5 Eroare la scriere\r\n",
-    "6 EOF prematur\r\n",
-    "7 Linia este prea lunga\r\n",
-    "8 Comanda necunoscuta\r\n",
-    "9 Fisier inexistent\r\n"
+    "2 continua\r\n",
+    "3 La revedere\r\n",
+    "4 Eroare la citire\r\n",
+    "5 Eroare la crearea fisierului\r\n",
+    "6 Eroare la scriere\r\n",
+    "7 EOF prematur\r\n",
+    "8 Linia este prea lunga\r\n",
+    "9 Comanda necunoscuta\r\n",
+    "10 Fisier inexistent\r\n"
 };
 
+static char FILE_BUF[100000000];
 static inline void reply(int sockfd, int code){
     (void)write(sockfd, errorcodes[code], strlen(errorcodes[code]));
 }
 
 int main(int argc, char * argv[]){
-    int fd, sockfd[argc-3];
+    int fd, sockfd[MAXSEG]; //cate segmente sunt
     char buf[MAXBUF];
     struct sockaddr_in local_addr, remote_addr;
     int nread, ret;
     unsigned int serverCount = 0;
     char *delimitator = "\n";
     int sockfdIndex = 0, argvServerIndex = 2;
-    
+    char size[20];
+    int nr_segmente = atoi(argv[argc-1]);
+    int total_size;
+    int offset=0;
+    int ok;
+    int segmentsize=0;
+    int readoffset=0;
+    int toread=0;
     if(argc < 4) {
         printf("Mod de apel: %s <nume_fisier> <lista_servere> <nr_segmente> \n", argv[0]);
         exit(1);
@@ -50,7 +60,7 @@ int main(int argc, char * argv[]){
     
     printf("%d\n",serverCount);
     //se creaza un socket diferit pentru fiecare conexiune(client-server) in parte
-    while(sockfdIndex < serverCount){
+    while(sockfdIndex < nr_segmente){
         
         if((sockfd[sockfdIndex] = socket(PF_INET, SOCK_STREAM, 0)) == -1){
             printf("Eroare la socket \n");
@@ -62,8 +72,8 @@ int main(int argc, char * argv[]){
             printf("Eroare la bind \n");
             exit(1);
         }
-        printf("%s\n",argv[argvServerIndex]);
-        set_addr(&remote_addr, argv[argvServerIndex], 0, SERVER_PORT);
+        printf("%s\n",argv[(argvServerIndex-2)%serverCount+2]);//accesez 
+        set_addr(&remote_addr, argv[(argvServerIndex-2)%serverCount+2], 0, SERVER_PORT);
         
         if(connect(sockfd[sockfdIndex], (struct sockaddr *)&remote_addr, sizeof(remote_addr)) == -1){
             printf("Eroare la conectare \n");
@@ -91,12 +101,24 @@ int main(int argc, char * argv[]){
                 argvServerIndex++;
                 continue; //sari la urmatorul server
         }
-            
+
+        if(sockfdIndex==0) //dimensiunea fisierului se afla la prima iteratie
+        {
+            snprintf(size, MAXBUF, "size %s%s",argv[1], delimitator);
+            printf("%s \n", size);  
+            stream_write(sockfd[sockfdIndex], (void *)size,  MAXBUF);
+            ret = readline(sockfd[sockfdIndex],size, 20); 
+            total_size=atoi(size);
+            printf("size=%s %d %d\n",size,total_size,ret);
+        }
+        segmentsize=total_size/nr_segmente;
+        snprintf(size, MAXBUF, "segment %d%s",segmentsize, delimitator);
+        stream_write(sockfd[sockfdIndex], (void *)size,  MAXBUF);
         //sfarsit confirmare fisierul
         
         
         //scriu in buffer codul(get) si numele fisierului pe care il doresc
-        snprintf(buf, MAXBUF, "get %s%s", argv[1], delimitator);
+        snprintf(buf, MAXBUF, "get %d%s", offset, delimitator);
         
         //scriu in socket comanda
         printf("Se trimite la server comanda %s",buf);
@@ -110,7 +132,7 @@ int main(int argc, char * argv[]){
         //     exit(1);
         // }
         //preluarea fisierului
-            fd = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 00644); 
+            
     
             if(fd == -1){
                 printf("eroare aici\n");
@@ -119,15 +141,16 @@ int main(int argc, char * argv[]){
             }
             
             //citirea fisierului
+            toread+=segmentsize;
             printf("Am ajuns si aici\n");
-            while((nread = stream_read(sockfd[sockfdIndex], (void *)buf, MAXBUF)) > 0){
-                 printf("BUF=%d\n",nread);
-                if(write(fd, (void *)buf, nread) == -1){
-                    //reply(sockfd[sockfdIndex], EX3_FILEWRERR);
-                    return;
-                }
+            while((nread = stream_read(sockfd[sockfdIndex], (void *)FILE_BUF+readoffset , toread)) > 0){
+                readoffset+=nread;
+                toread-=nread;
+                printf("BUF=%d\n",nread);
+                
             }
-            close(fd);
+            printf("offset  = %i %i\n",readoffset,toread);
+            offset+=segmentsize;
             // if(nread < 0)
             //     reply(sockfd[sockfdIndex], EX3_READERR);
             // else
@@ -137,7 +160,13 @@ int main(int argc, char * argv[]){
         sockfdIndex++;
         argvServerIndex++;
     }
-    
+    //scriem tot fisierul la final
+    fd = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 00644); 
+    if(write(fd, (void *)FILE_BUF, total_size) == -1){
+                    //reply(sockfd[sockfdIndex], EX3_FILEWRERR);
+        return;
+    }
+    close(fd);
     return 0;
     
 }
