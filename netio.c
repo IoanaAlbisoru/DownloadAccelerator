@@ -1,4 +1,5 @@
 #include<string.h>
+#include<stdio.h>
 #include<unistd.h>
 #include<netdb.h>
 #include<sys/types.h>
@@ -42,10 +43,11 @@ int stream_read(int sockfd, char *buf, int len){
 int stream_write(int sockfd, char *buf, int len){
     int nwr;
     int remaining = len;
-    
+    printf("IN STREAM_WRITE:%s %i\n",buf,len);
     while(remaining > 0){
         if((nwr = write(sockfd, buf, remaining)) == -1)
             return -1;
+            printf("NRW = %i\n",nwr);
         remaining -= nwr;
         buf += nwr;
     }

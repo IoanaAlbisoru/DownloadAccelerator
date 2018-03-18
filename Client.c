@@ -15,15 +15,15 @@
 #define MAXBUF 1024
 
 char *errorcodes[] = {
-    "1 Succes\n",
-    "2 La revedere\n",
-    "3 Eroare la citire\n",
-    "4 Eroare la crearea fisierului\n",
-    "5 Eroare la scriere\n",
-    "6 EOF prematur\n",
-    "7 Linia este prea lunga\n",
-    "8 Comanda necunoscuta\n",
-    "9 Fisier inexistent\n"
+    "1 Succes\r\n",
+    "2 La revedere\r\n",
+    "3 Eroare la citire\r\n",
+    "4 Eroare la crearea fisierului\r\n",
+    "5 Eroare la scriere\r\n",
+    "6 EOF prematur\r\n",
+    "7 Linia este prea lunga\r\n",
+    "8 Comanda necunoscuta\r\n",
+    "9 Fisier inexistent\r\n"
 };
 
 static inline void reply(int sockfd, int code){
@@ -62,6 +62,7 @@ int main(int argc, char * argv[]){
             printf("Eroare la bind \n");
             exit(1);
         }
+        printf("%s\n",argv[argvServerIndex]);
         set_addr(&remote_addr, argv[argvServerIndex], 0, SERVER_PORT);
         
         if(connect(sockfd[sockfdIndex], (struct sockaddr *)&remote_addr, sizeof(remote_addr)) == -1){
@@ -71,23 +72,25 @@ int main(int argc, char * argv[]){
         printf("Urmeaza sa intreb serverul daca are fisierul.\n");
         //intreb serverul daca are fisierul
         
-            //scriu in buffer codul (search) si numele fisierului pe care doresc sa-l caut
-            snprintf(buf, MAXBUF, "search %s%s", argv[1], delimitator);
-            printf("%s \n", buf);
-            //scriu in socket informatia
-            stream_write(sockfd[sockfdIndex], (void *)buf, MAXBUF);
-            printf("s-a intors din stream_write.\n");
+        //scriu in buffer codul (search) si numele fisierului pe care doresc sa-l caut
+        snprintf(buf, MAXBUF, "search %s%s", argv[1], delimitator);
+        printf("%s \n", buf);
+        //scriu in socket informatia
+        int a1;
+        a1=stream_write(sockfd[sockfdIndex], (void *)buf,  MAXBUF);
+        printf("a1=%i\n",a1);
+        printf("s-a intors din stream_write.\n");
             //astept ca serverul sa raspunda comenzii
-            ret = readline(sockfd[sockfdIndex], buf, MAXBUF);
-            printf("ret: %d \n", ret);
-            
+        ret = readline(sockfd[sockfdIndex], buf, MAXBUF);
+        printf("ret: %d %s \n", ret,buf);
+        
             //inchide conexiunea daca fisierul nu a fost gasit
-            if(ret != EX3_SUCCESS){
-                    close(sockfd[sockfdIndex]);
-                    sockfdIndex++;
-                    argvServerIndex++;
-                    continue; //sari la urmatorul server
-            }
+        if(ret !=0){
+               close(sockfd[sockfdIndex]);
+                sockfdIndex++;
+                argvServerIndex++;
+                continue; //sari la urmatorul server
+        }
             
         //sfarsit confirmare fisierul
         
@@ -96,11 +99,12 @@ int main(int argc, char * argv[]){
         snprintf(buf, MAXBUF, "get %s%s", argv[1], delimitator);
         
         //scriu in socket comanda
+        printf("Se trimite la server comanda %s",buf);
         stream_write(sockfd[sockfdIndex], (void *)buf, MAXBUF);
         
         //astept raspunsul serverului
         ret = readline(sockfd[sockfdIndex], buf, MAXBUF);
-        
+        printf("%i,%s",ret,buf);
         if(ret != EX3_SUCCESS){
             printf("Client: Eroare raspuns. \n");
             exit(1);
