@@ -45,8 +45,18 @@ int main(int argc, char * argv[]){
     }
     
     //numarul de servere date
-    for(int i = 2; i < argc - 1; ++i) //porneste dupa nume_fisier pana la nr_segmente, exclusiv
+    int i;
+    for(i = 2; i < argc - 1; ++i) //porneste dupa nume_fisier pana la nr_segmente, exclusiv
         serverCount++;
+
+
+
+    char ServerName[serverCount][16];	//matricea unde retin IP-urile serverelor care contin fisierul
+    int indexServerWithFile = 0;		//retine numarul servelor care contin fisierul
+    int indexServerName = 0;			//folosit la parcurgerea serverelor care contin fisierul
+    long int fileSize;				//dimensiunea fisierului
+    int segmentsNumber;				//numarul de segmente
+
     
     printf("%d\n",serverCount);
     //se creaza un socket diferit pentru fiecare conexiune(client-server) in parte
@@ -90,8 +100,31 @@ int main(int argc, char * argv[]){
             }
             
         //sfarsit confirmare fisierul
+
+
+	//
+	strcpy(ServerName[indexServerWithFile],argv[argvServerIndex]);
+	indexServerWithFile++;
+
+	//scriu in buffer size
+	snprintf(buf, MAXBUF, "size %s%s", argv[1], delimitator);
+	//scriu in socket comanda
+	stream_write(sockfd[sockfdIndex], (void *)buf, MAXBUF);
+	//astept raspuns de la server
+	ret = stream_read(sockfd[sockfdIndex], buf, MAXBUF);
+
+	if(ret != EX3_SUCCESS)
+	{
+		printf("Eroare la aflarea dimensiunii fisierului\n");
+	}
+
+	char *ptr;	//ceva pointer necesar pt conversia din string in long int
+
+	fileSize = strtol(buf, &ptr, 10);
+
+	segmentsNumber = fileSize/argv[argc-1];
         
-        
+        /*
         //scriu in buffer codul(get) si numele fisierului pe care il doresc
         snprintf(buf, MAXBUF, "get %s%s", argv[1], delimitator);
         
@@ -126,10 +159,18 @@ int main(int argc, char * argv[]){
             else
                 reply(sockfd[sockfdIndex], EX3_SUCCESS);
         //sfarsitul preluarii
+	*/
         
         sockfdIndex++;
         argvServerIndex++;
     }
+
+	while(indexServerName<indexServerWithFile)
+	{
+		
+
+		indexServerName++;
+	}
     
     return 0;
     
