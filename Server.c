@@ -22,6 +22,7 @@
 
 int ret;
 char entire_filename[100];
+int total_size;
 char *errorcodes[] = {
     "1 Succes\r\n",
     "2 continua\r\n",
@@ -69,6 +70,8 @@ int find_file(char *file_name, char *root){
 				printf("file_name: --%s--\n", file_name);
 				if(strncmp(sdir->d_name, file_name,strlen(sdir->d_name))==0){
                     strcpy(entire_filename,filepath);
+                    total_size = st.st_size;
+                    printf("totalsize=%i\n",total_size);
 					return 1;
 					
 				}
@@ -127,10 +130,19 @@ void ex3_proto(int connfd) {
                 reply(connfd, EX3_INFILE);
             continue;
         }
+
+        if(strncmp(cmd, "getSize", n) == 0){
+            cmd += n + 1;
+            char a[20];
+            itoa(a,total_size,10);
+            strcat(a,"\r\n");
+                reply(connfd, EX3_INFILE);
+            continue;
+        }
         
         if(strncmp(cmd, "get", n) == 0){
             printf("Am ajuns in comanda get\n");
-            if((fd = open(entire_filename, O_RDONLY)) == -1){
+            if((fd = open(entire_filename   , O_RDONLY)) == -1){
                 printf("Eroare la deschiderea fisierului %s \n", file_name);
                 exit(1);
             }

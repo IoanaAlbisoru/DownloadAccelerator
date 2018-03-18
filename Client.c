@@ -103,32 +103,35 @@ int main(int argc, char * argv[]){
         stream_write(sockfd[sockfdIndex], (void *)buf, MAXBUF);
         
         //astept raspunsul serverului
-        ret = readline(sockfd[sockfdIndex], buf, MAXBUF);
-        printf("%i,%s",ret,buf);
-        if(ret != EX3_SUCCESS){
-            printf("Client: Eroare raspuns. \n");
-            exit(1);
-        }
+        //ret = readline(sockfd[sockfdIndex], buf, MAXBUF);
+        //printf("%i,%s",ret,buf);
+        // if(ret != EX3_SUCCESS){
+        //     printf("Client: Eroare raspuns. \n");
+        //     exit(1);
+        // }
         //preluarea fisierului
-            fd = open(argv[1], O_WRONLY | O_CREAT); 
+            fd = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 00644); 
     
             if(fd == -1){
-                reply(sockfd[sockfdIndex], EX3_FILECREA);
+                printf("eroare aici\n");
+                //reply(sockfd[sockfdIndex], EX3_FILECREA);
                 return;
             }
             
             //citirea fisierului
+            printf("Am ajuns si aici\n");
             while((nread = stream_read(sockfd[sockfdIndex], (void *)buf, MAXBUF)) > 0){
+                 printf("BUF=%d\n",nread);
                 if(write(fd, (void *)buf, nread) == -1){
-                    reply(sockfd[sockfdIndex], EX3_FILEWRERR);
+                    //reply(sockfd[sockfdIndex], EX3_FILEWRERR);
                     return;
                 }
             }
             close(fd);
-            if(nread < 0)
-                reply(sockfd[sockfdIndex], EX3_READERR);
-            else
-                reply(sockfd[sockfdIndex], EX3_SUCCESS);
+            // if(nread < 0)
+            //     reply(sockfd[sockfdIndex], EX3_READERR);
+            // else
+            //     reply(sockfd[sockfdIndex], EX3_SUCCESS);
         //sfarsitul preluarii
         
         sockfdIndex++;
