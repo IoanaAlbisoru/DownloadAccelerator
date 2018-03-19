@@ -13,12 +13,6 @@
 
 #define SERVER_PORT 6000
 #define MAXBUF 1024
-#define MAXCMD 500
-#define ROOT "/home/oana/Desktop/proiect" //directorul de start al cautarii
-
-#if MAXCMD > MAXBUF
-# error "MAXCMD prea mare"
-#endif
 
 int ret;
 char entire_filename[100];
@@ -26,16 +20,16 @@ int total_size;
 int segSize;
 int offset;
 char *errorcodes[] = {
-    "1 Succes\r\n",
-    "2 continua\r\n",
-    "3 La revedere\r\n",
-    "4 Eroare la citire\r\n",
-    "5 Eroare la crearea fisierului\r\n",
-    "6 Eroare la scriere\r\n",
-    "7 EOF prematur\r\n",
-    "8 Linia este prea lunga\r\n",
-    "9 Comanda necunoscuta\r\n",
-    "10 Fisier inexistent\r\n"
+    "0 Succes\r\n",
+    "1 continua\r\n",
+    "2 La revedere\r\n",
+    "3 Eroare la citire\r\n",
+    "4 Eroare la crearea fisierului\r\n",
+    "5 Eroare la scriere\r\n",
+    "6 EOF prematur\r\n",
+    "7 Linia este prea lunga\r\n",
+    "8 Comanda necunoscuta\r\n",
+    "9 Fisier inexistent\r\n"
 };
 
 static inline void reply(int sockfd, int code){
@@ -67,13 +61,13 @@ int find_file(char *file_name, char *root){
 			}
 
 			if(S_ISREG(st.st_mode)){
-				printf("e fisier\n");
-				printf("d_name: --%s--\n", sdir->d_name);
-				printf("file_name: --%s--\n", file_name);
+				//printf("e fisier\n");
+				//printf("d_name: --%s--\n", sdir->d_name);
+				//printf("file_name: --%s--\n", file_name);
 				if(strncmp(sdir->d_name, file_name,strlen(sdir->d_name))==0){
                     strcpy(entire_filename,filepath);
                     total_size = st.st_size;
-                    printf("totalsize=%i\n",total_size);
+                    //printf("totalsize=%i\n",total_size);
 					return 1;
 					
 				}
