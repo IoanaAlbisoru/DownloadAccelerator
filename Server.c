@@ -21,15 +21,15 @@ int segSize;
 int offset;
 char *errorcodes[] = {
     "0 Succes\r\n",
-    "1 continua\r\n",
+    "1 Continua\r\n",
     "2 La revedere\r\n",
     "3 Eroare la citire\r\n",
-    "4 Eroare la crearea fisierului\r\n",
-    "5 Eroare la scriere\r\n",
-    "6 EOF prematur\r\n",
-    "7 Linia este prea lunga\r\n",
-    "8 Comanda necunoscuta\r\n",
-    "9 Fisier inexistent\r\n"
+    "5 Eroare la crearea fisierului\r\n",
+    "6 Eroare la scriere\r\n",
+    "7 EOF prematur\r\n",
+    "8 Linia este prea lunga\r\n",
+    "9 Comanda necunoscuta\r\n",
+    "10 Fisier inexistent\r\n"
 };
 
 static inline void reply(int sockfd, int code){
